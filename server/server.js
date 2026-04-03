@@ -1,31 +1,53 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-require('dotenv').config();
+const dotenv = require('dotenv');
+const fs = require('fs');
+const path = require('path');
+
+dotenv.config();
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-// Подключение к твоей базе (Замени MONGO_URI в .env или тут)
-const DB_URL = process.env.MONGO_URI || "mongodb://localhost:27017/bookclub";
+// Отдача статики для аватаров
+const uploadsPath = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath);
+}
+app.use('/uploads', express.static(uploadsPath));
 
-mongoose.connect(DB_URL)
-  .then(() => console.log('✅ Успешное подключение к MongoDB'))
-  .catch(err => console.error('❌ Ошибка подключения:', err));
+// Роуты
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/books', require('./routes/books'));
+app.use('/api/comments', require('./routes/comments'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/stats', require('./routes/stats'));
 
-// Модель книги
-const Book = mongoose.model('Book', {
-  title: String,
-  author: String,
-  description: String
+// 404 handler
+app.use((req, res, next) => {
+  res.status(404).json({ message: 'Маршрут не найден' });
 });
 
-// Роуты (Эндпоинты API)
-app.get('/api/books', async (req, res) => {
-  const books = await Book.find();
-  res.json(books);
+// Глобальный error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Внутренняя ошибка сервера' });
 });
 
-const PORT = 5000;
-app.listen(PORT, () => console.log(`🚀 Сервер запущен на порту ${PORT}`));
+const PORT = process.env.PORT || 5000;
+
+mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+})
+.then(() => {
+  console.log('MongoDB подключен');
+  app.listen(PORT, () => console.log(`Сервер запущен на порту ${PORT}`));
+})
+.catch(err => {
+  console.error('Ошибка подключения MongoDB:', err.message);
+  process.exit(1);
+});
