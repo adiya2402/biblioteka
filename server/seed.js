@@ -19,7 +19,7 @@ const initialBooks = [
 
 async function seedDB() {
   try {
-    await mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+    await mongoose.connect(process.env.MONGO_URI);
     
     // Создаем дефолтного админа
     await User.deleteMany();
